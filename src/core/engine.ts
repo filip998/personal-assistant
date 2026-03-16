@@ -1,5 +1,6 @@
 import type { MessagingAdapter, IncomingMessage } from "../adapters/types.js";
 import type { Database } from "../db/types.js";
+import type { Config } from "../config.js";
 import type { SessionManager } from "./session-manager.js";
 import type { UserManager } from "./user-manager.js";
 
@@ -15,8 +16,23 @@ const TOOL_ICONS: Record<string, string> = {
   default: "🔧",
 };
 
-const SETTINGS_DEFAULTS: Record<string, string> = {
-  streaming: "on",
+interface SettingDef {
+  default: string;
+  type: "boolean" | "text";
+  description: string;
+}
+
+const SETTINGS_DEFS: Record<string, SettingDef> = {
+  streaming: {
+    default: "on",
+    type: "boolean",
+    description: "Show live tool/reasoning updates while processing",
+  },
+  model: {
+    default: "", // filled from config at runtime
+    type: "text",
+    description: "AI model to use (e.g. claude-sonnet-4, claude-opus-4.6, gpt-5.1)",
+  },
 };
 
 /**
@@ -28,8 +44,12 @@ export class Engine {
   constructor(
     private sessionManager: SessionManager,
     private userManager: UserManager,
-    private db: Database
-  ) {}
+    private db: Database,
+    config: Config
+  ) {
+    // Set runtime defaults from config
+    SETTINGS_DEFS.model.default = config.model;
+  }
 
   /** Register a messaging adapter */
   addAdapter(adapter: MessagingAdapter): void {
@@ -56,7 +76,7 @@ export class Engine {
   }
 
   private getSetting(userId: string, key: string): string {
-    return this.db.getUserPref(userId, key) ?? SETTINGS_DEFAULTS[key] ?? "off";
+    return this.db.getUserPref(userId, key) ?? SETTINGS_DEFS[key]?.default ?? "";
   }
 
   private async handleMessage(
@@ -130,7 +150,8 @@ export class Engine {
     };
 
     try {
-      const session = await this.sessionManager.getSession(userId);
+      const userModel = this.getSetting(userId, "model");
+      const session = await this.sessionManager.getSession(userId, userModel);
 
       session.on((event) => {
         const t = event.type as string;
@@ -240,25 +261,26 @@ export class Engine {
     // /settings — list all
     if (args.length === 0) {
       const allPrefs = this.db.getAllPrefs(userId);
-      const lines = Object.keys(SETTINGS_DEFAULTS).map((key) => {
-        const value = allPrefs[key] ?? SETTINGS_DEFAULTS[key] ?? "off";
-        return `  ${key}: ${value}`;
+      const lines = Object.entries(SETTINGS_DEFS).map(([key, def]) => {
+        const value = allPrefs[key] ?? def.default;
+        return `  ${key}: ${value}\n    ${def.description}`;
       });
       await adapter.sendMessage(
         msg.chatId,
-        `⚙️ Settings:\n${lines.join("\n")}\n\nUsage: /settings <name> [on|off]`
+        `⚙️ Settings:\n${lines.join("\n")}\n\nUsage: /settings <name> [value]`
       );
       return;
     }
 
     const settingName = args[0]!.toLowerCase();
-    const settingValue = args[1]?.toLowerCase();
+    const settingValue = args.slice(1).join(" ") || undefined;
+    const def = SETTINGS_DEFS[settingName];
 
     // Check if it's a valid setting
-    if (!(settingName in SETTINGS_DEFAULTS)) {
+    if (!def) {
       await adapter.sendMessage(
         msg.chatId,
-        `Unknown setting: ${settingName}\n\nAvailable: ${Object.keys(SETTINGS_DEFAULTS).join(", ")}`
+        `Unknown setting: ${settingName}\n\nAvailable: ${Object.keys(SETTINGS_DEFS).join(", ")}`
       );
       return;
     }
@@ -273,16 +295,28 @@ export class Engine {
       return;
     }
 
-    // /settings <name> on|off
-    if (settingValue !== "on" && settingValue !== "off") {
+    // Validate boolean settings
+    if (def.type === "boolean" && settingValue !== "on" && settingValue !== "off") {
       await adapter.sendMessage(
         msg.chatId,
-        `Invalid value: ${settingValue}. Use "on" or "off".`
+        `Invalid value for ${settingName}: "${settingValue}". Use "on" or "off".`
       );
       return;
     }
 
+    // Save the setting
     this.db.setUserPref(userId, settingName, settingValue);
+
+    // Special handling: model change resets the session
+    if (settingName === "model") {
+      await this.sessionManager.resetSession(userId);
+      await adapter.sendMessage(
+        msg.chatId,
+        `✅ Model changed to: ${settingValue}\n🔄 Session reset — next message will use the new model.`
+      );
+      return;
+    }
+
     await adapter.sendMessage(
       msg.chatId,
       `✅ ${settingName}: ${settingValue}`

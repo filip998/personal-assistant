@@ -57,7 +57,7 @@ async function main() {
   const sessionManager = new SessionManager(copilot, db);
 
   // Set up engine with adapters
-  const engine = new Engine(sessionManager, userManager, db);
+  const engine = new Engine(sessionManager, userManager, db, config);
   engine.addAdapter(new TelegramAdapter(config.telegramBotToken));
 
   // Start the engine

@@ -18,7 +18,7 @@ export class SessionManager {
    * Get or create a Copilot session for a user.
    * Tries to resume from DB, falls back to creating a new one.
    */
-  async getSession(userId: string): Promise<CopilotSession> {
+  async getSession(userId: string, model?: string): Promise<CopilotSession> {
     // Check in-memory cache first
     const cached = this.activeSessions.get(userId);
     if (cached) {
@@ -44,9 +44,9 @@ export class SessionManager {
     }
 
     // Create a new session
-    const session = await this.copilot.createSession();
+    const session = await this.copilot.createSession(model);
     this.activeSessions.set(userId, session);
-    this.db.upsertSession(userId, session.sessionId, "default");
+    this.db.upsertSession(userId, session.sessionId, model || "default");
     return session;
   }
 
