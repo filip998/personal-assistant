@@ -89,6 +89,12 @@ export class CopilotWrapper {
     await this.client.stop();
   }
 
+  /** Get available model IDs */
+  async listModels(): Promise<string[]> {
+    const models = await this.client.listModels();
+    return models.map((m) => m.id);
+  }
+
   /** Create a new session with all registered tools */
   async createSession(model?: string): Promise<CopilotSession> {
     const session = await this.client.createSession({

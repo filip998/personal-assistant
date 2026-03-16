@@ -1,6 +1,7 @@
 import type { MessagingAdapter, IncomingMessage } from "../adapters/types.js";
 import type { Database } from "../db/types.js";
 import type { Config } from "../config.js";
+import type { CopilotWrapper } from "./copilot-client.js";
 import type { SessionManager } from "./session-manager.js";
 import type { UserManager } from "./user-manager.js";
 
@@ -40,14 +41,15 @@ const SETTINGS_DEFS: Record<string, SettingDef> = {
  */
 export class Engine {
   private adapters: MessagingAdapter[] = [];
+  private availableModels: string[] | null = null;
 
   constructor(
     private sessionManager: SessionManager,
     private userManager: UserManager,
     private db: Database,
+    private copilot: CopilotWrapper,
     config: Config
   ) {
-    // Set runtime defaults from config
     SETTINGS_DEFS.model.default = config.model;
   }
 
@@ -302,6 +304,24 @@ export class Engine {
         `Invalid value for ${settingName}: "${settingValue}". Use "on" or "off".`
       );
       return;
+    }
+
+    // Validate model against available models
+    if (settingName === "model") {
+      try {
+        if (!this.availableModels) {
+          this.availableModels = await this.copilot.listModels();
+        }
+        if (!this.availableModels.includes(settingValue)) {
+          await adapter.sendMessage(
+            msg.chatId,
+            `Unknown model: "${settingValue}"\n\nAvailable models:\n${this.availableModels.map((m) => `  ${m}`).join("\n")}`
+          );
+          return;
+        }
+      } catch {
+        // If we can't list models, allow the value through — let the session creation fail if invalid
+      }
     }
 
     // Save the setting
