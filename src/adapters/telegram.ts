@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import type { MessagingAdapter, MessageHandler, IncomingMessage } from "./types.js";
+import { markdownToTelegramHtml } from "../utils/markdown-to-html.js";
 
 const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
 
@@ -49,17 +50,23 @@ export class TelegramAdapter implements MessagingAdapter {
   }
 
   async sendMessage(chatId: string, text: string): Promise<string> {
-    const chunks = splitMessage(text, TELEGRAM_MAX_MESSAGE_LENGTH);
+    const html = markdownToTelegramHtml(text);
+    const chunks = splitMessage(html, TELEGRAM_MAX_MESSAGE_LENGTH);
     let lastMessageId = "";
     for (const chunk of chunks) {
       try {
         const result = await this.bot.api.sendMessage(Number(chatId), chunk, {
-          parse_mode: "MarkdownV2",
+          parse_mode: "HTML",
         });
         lastMessageId = String(result.message_id);
       } catch {
-        const result = await this.bot.api.sendMessage(Number(chatId), chunk);
-        lastMessageId = String(result.message_id);
+        // HTML parse failed — send original text as plain text
+        const plainChunks = splitMessage(text, TELEGRAM_MAX_MESSAGE_LENGTH);
+        for (const plain of plainChunks) {
+          const result = await this.bot.api.sendMessage(Number(chatId), plain);
+          lastMessageId = String(result.message_id);
+        }
+        break;
       }
     }
     return lastMessageId;

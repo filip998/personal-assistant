@@ -151,11 +151,13 @@ export class Engine {
       }
     };
 
+    let unsubscribe: (() => void) | undefined;
+
     try {
       const userModel = this.getSetting(userId, "model");
       const session = await this.sessionManager.getSession(userId, userModel);
 
-      session.on((event) => {
+      unsubscribe = session.on((event) => {
         const t = event.type as string;
         const data = event.data as any;
 
@@ -208,6 +210,7 @@ export class Engine {
       );
     } finally {
       clearInterval(typingInterval);
+      unsubscribe?.();
     }
   }
 
