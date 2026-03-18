@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
 import { SQLiteDatabase } from "./db/sqlite.js";
 import { TelegramAdapter } from "./adapters/telegram.js";
@@ -6,12 +9,14 @@ import { SessionManager } from "./core/session-manager.js";
 import { UserManager } from "./core/user-manager.js";
 import { Engine } from "./core/engine.js";
 import { PluginRegistry } from "./plugins/registry.js";
+import { loadPrompts } from "./core/prompt-loader.js";
 
-const SYSTEM_PROMPT = `You are a helpful personal assistant. You are friendly, concise, and proactive.
+const DEFAULT_PROMPT = `You are a helpful personal assistant. You are friendly, concise, and proactive.
 You help the user with everyday tasks: answering questions, searching the web, planning, giving tips and advice.
 When you don't know something, say so honestly.
-You have built-in web_search and web_fetch tools — use them whenever the user needs current information, weather, news, prices, deals, or anything else that requires up-to-date data.
 Keep responses concise but thorough. Use markdown formatting when it helps readability.`;
+
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 async function main() {
   console.log("🤖 Starting Personal Assistant...\n");
@@ -26,17 +31,19 @@ async function main() {
   // Set up plugin registry (for future custom plugins)
   const plugins = new PluginRegistry();
 
-  // Build full system prompt from base + plugin fragments
+  // Load system prompt from prompts/ directory
+  const { prompt: loadedPrompt, files: promptFiles } = loadPrompts(
+    resolve(projectRoot, "prompts")
+  );
+  const basePrompt = loadedPrompt || DEFAULT_PROMPT;
+
+  // Append plugin prompt fragments
   const pluginPromptParts = plugins.getSystemPromptFragments();
   const fullSystemPrompt = pluginPromptParts
-    ? `${SYSTEM_PROMPT}\n\n${pluginPromptParts}`
-    : SYSTEM_PROMPT;
+    ? `${basePrompt}\n\n${pluginPromptParts}`
+    : basePrompt;
 
   // Initialize Copilot SDK with MCP servers from config
-  const { readFileSync } = await import("node:fs");
-  const { resolve, dirname } = await import("node:path");
-  const { fileURLToPath } = await import("node:url");
-  const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const mcpConfig = JSON.parse(
     readFileSync(resolve(projectRoot, "mcp-servers.json"), "utf-8")
   );
@@ -64,7 +71,8 @@ async function main() {
   await engine.start();
 
   console.log("\n✅ Personal Assistant is running!");
-  console.log(`   Plugins: ${plugins.getPluginNames().join(", ")}`);
+  console.log(`   Prompts: ${loadedPrompt ? promptFiles.join(", ") : "(using default)"}`);
+  console.log(`   Plugins: ${plugins.getPluginNames().join(", ") || "(none)"}`);
   console.log("   Press Ctrl+C to stop.\n");
 
   // Graceful shutdown
