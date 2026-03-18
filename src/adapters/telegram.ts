@@ -38,6 +38,14 @@ export class TelegramAdapter implements MessagingAdapter {
 
   async start(): Promise<void> {
     console.log("[telegram] Starting bot with long polling...");
+
+    await this.bot.api.setMyCommands([
+      { command: "start", description: "Welcome message" },
+      { command: "reset", description: "Clear conversation and start fresh" },
+      { command: "settings", description: "View and change settings" },
+      { command: "help", description: "Show available commands" },
+    ]);
+
     // Don't await — start() blocks forever in long-polling mode
     this.bot.start({
       onStart: () => console.log("[telegram] Bot is running"),

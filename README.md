@@ -51,12 +51,13 @@ npm start
 
 ## Usage
 
-Open your bot in Telegram and start chatting! Commands:
+Open your bot in Telegram and start chatting! Type `/` to see the command menu.
 
 | Command | Description |
 |---------|-------------|
 | `/start` | Welcome message |
 | `/reset` | Clear conversation and start fresh |
+| `/settings` | View and change settings (model, streaming) |
 | `/help` | Show available commands |
 
 ## Adding Plugins
