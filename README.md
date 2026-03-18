@@ -33,6 +33,10 @@ npm install
 # Copy env template and fill in your values
 cp .env.example .env
 # Edit .env and add your TELEGRAM_BOT_TOKEN
+
+# Set up personal context (optional but recommended)
+cp prompts/CONTEXT.md.example prompts/CONTEXT.md
+# Edit prompts/CONTEXT.md with your name, location, preferences
 ```
 
 ## Running
@@ -114,6 +118,33 @@ Then add it to the engine in `src/index.ts`:
 engine.addAdapter(new ViberAdapter(config.viberToken));
 ```
 
+## Customizing the System Prompt
+
+The assistant's behavior is defined by `.md` files in the `prompts/` directory. At startup, all `.md` files are loaded alphabetically and concatenated into the system prompt.
+
+| File | Purpose | Committed? |
+|------|---------|------------|
+| `SOUL.md` | Personality, tone, behavior rules | ✅ Yes |
+| `TOOLS.md` | Tool usage guidance and preferences | ✅ Yes |
+| `CONTEXT.md` | Your personal context (name, location, preferences) | ❌ Gitignored |
+| `CONTEXT.md.example` | Template for personal context | ✅ Yes |
+
+### Getting started
+
+```bash
+# Copy the template and fill in your details
+cp prompts/CONTEXT.md.example prompts/CONTEXT.md
+# Edit prompts/CONTEXT.md with your personal info
+```
+
+### How it works
+
+- Files are loaded in alphabetical order: `CONTEXT.md` → `SOUL.md` → `TOOLS.md`
+- Plugin prompt fragments are appended after the loaded files
+- If `prompts/` is missing or empty, a built-in default prompt is used
+- Add new `.md` files to extend the prompt (e.g., `TOOLS-google.md` for Google Workspace)
+- Changes take effect on restart (or after `/reset` which creates a new session)
+
 ## Architecture
 
 ```
@@ -137,16 +168,25 @@ src/
 ├── core/
 │   ├── engine.ts         # Message routing orchestrator
 │   ├── copilot-client.ts # Copilot SDK wrapper
+│   ├── prompt-loader.ts  # Loads .md prompt files at startup
 │   ├── session-manager.ts # Per-user session lifecycle
 │   └── user-manager.ts   # Auth & user management
 ├── plugins/
 │   ├── types.ts          # Plugin interface
 │   ├── registry.ts       # Plugin loader
 │   └── web-search/       # Built-in web search plugin
+├── utils/
+│   └── markdown-to-html.ts # Telegram HTML formatting
 └── db/
     ├── types.ts          # Database interface
     ├── sqlite.ts         # SQLite implementation
     └── migrations/       # SQL migrations
+
+prompts/                  # System prompt files (loaded alphabetically)
+├── SOUL.md               # Personality, tone, behavior rules
+├── TOOLS.md              # Tool usage guidance
+├── CONTEXT.md.example    # Template for personal context
+└── CONTEXT.md            # Your personal context (gitignored)
 ```
 
 ## License
