@@ -10,7 +10,9 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -26,6 +28,7 @@
     "@types/node": "^22.15.0",
     "eslint": "^9.0.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.0"
   }
 }
