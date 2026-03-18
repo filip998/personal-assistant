@@ -1,0 +1,13 @@
+# Personal Context
+<!-- Copy this file to CONTEXT.md and customize it -->
+<!-- CONTEXT.md is gitignored so your personal data stays local -->
+
+Your name is [name].
+You live in [city, country].
+You work as [profession].
+Your preferred language is [language].
+Your preferred currency is [currency].
+Your timezone is [timezone].
+
+<!-- Add any personal context that helps the assistant serve you better -->
+<!-- Examples: hobbies, travel patterns, dietary preferences, sports teams -->
