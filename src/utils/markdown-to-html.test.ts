@@ -4,7 +4,7 @@ import { markdownToTelegramHtml } from "./markdown-to-html.js";
 describe("markdownToTelegramHtml", () => {
   describe("passthrough", () => {
     it("returns empty string for empty input", () => {
-      expect(markdownToTelegramHtml("")).toBe("");
+      expect(markdownToTelegramHtml(""))..toBe("");
     });
 
     it("returns plain text unchanged (except HTML escaping)", () => {
@@ -20,7 +20,9 @@ describe("markdownToTelegramHtml", () => {
     });
 
     it("does not double-escape inside code blocks", () => {
-      const input = "```\nif (a < b && c > d) {}\n```";
+      const input = "```
+if (a < b && c > d) {}
+```";
       const result = markdownToTelegramHtml(input);
       expect(result).toContain("&lt;");
       expect(result).toContain("&amp;&amp;");
@@ -30,7 +32,9 @@ describe("markdownToTelegramHtml", () => {
 
   describe("code blocks", () => {
     it("wraps fenced code blocks in <pre><code>", () => {
-      const input = "```\nconsole.log('hi');\n```";
+      const input = "```
+console.log('hi');
+```";
       expect(markdownToTelegramHtml(input)).toBe(
         "<pre><code>console.log('hi');</code></pre>"
       );
@@ -44,7 +48,9 @@ describe("markdownToTelegramHtml", () => {
     });
 
     it("preserves code block contents from markdown processing", () => {
-      const input = "```\n**not bold** *not italic*\n```";
+      const input = "```
+**not bold** *not italic*
+```";
       const result = markdownToTelegramHtml(input);
       expect(result).not.toContain("<b>");
       expect(result).not.toContain("<i>");
@@ -54,19 +60,19 @@ describe("markdownToTelegramHtml", () => {
 
   describe("inline code", () => {
     it("wraps inline code in <code>", () => {
-      expect(markdownToTelegramHtml("Use `npm install`")).toBe(
+      expect(markdownToTelegramHtml("Use `npm install` ")).toBe(
         "Use <code>npm install</code>"
       );
     });
 
     it("escapes HTML inside inline code", () => {
-      expect(markdownToTelegramHtml("Type `<div>`")).toBe(
+      expect(markdownToTelegramHtml("Type `<div>` ")).toBe(
         "Type <code>&lt;div&gt;</code>"
       );
     });
 
     it("protects inline code from markdown processing", () => {
-      expect(markdownToTelegramHtml("`**not bold**`")).toBe(
+      expect(markdownToTelegramHtml("`**not bold**` ")).toBe(
         "<code>**not bold**</code>"
       );
     });
@@ -108,7 +114,6 @@ describe("markdownToTelegramHtml", () => {
 
     it("does not convert asterisks inside words", () => {
       const result = markdownToTelegramHtml("file*name*here");
-      // The regex uses word boundary checks — this should NOT become italic
       expect(result).not.toContain("<i>");
     });
   });
@@ -306,9 +311,47 @@ describe("markdownToTelegramHtml", () => {
       expect(result).toContain("<b>NBA Scores</b>");
       expect(result).toContain("Here are tonight's top performers:");
       expect(result).toContain("<pre>| Player | Team | Points |");
-      expect(result).toContain("| Jokic  | DEN  | 31     |");
+      expect(result).toContain("| Jokic  | DEN  | 31     |);
       expect(result).not.toContain("|--------|");
       expect(result).toContain("Great game tonight!");
+    });
+
+    it("does not extract tables inside fenced code blocks", () => {
+      const input = "```
+| A | B |
+|---|---|
+| 1 | 2 |
+```";
+      const result = markdownToTelegramHtml(input);
+      expect(result).toContain("<code>");
+      expect(result).toContain("| A | B |");
+      expect(result).toContain("|---|---|");
+      expect(result).toContain("| 1 | 2 |");
+    });
+
+    it("handles multiple tables in one message", () => {
+      const input = [
+        "## Offense",
+        "",
+        "| Player | Pts |",
+        "|--------|-----|",
+        "| Jokic  | 31  |",
+        "",
+        "## Defense",
+        "",
+        "| Player | Blk |",
+        "|--------|-----|",
+        "| Gobert | 4   |",
+      ].join("\n");
+
+      const result = markdownToTelegramHtml(input);
+
+      expect(result).toContain("<b>Offense</b>");
+      expect(result).toContain("<b>Defense</b>");
+      const preCount = (result.match(/<pre>/g) || []).length;
+      expect(preCount).toBe(2);
+      expect(result).toContain("| Jokic  | 31  |");
+      expect(result).toContain("| Gobert | 4   |");
     });
   });
 
