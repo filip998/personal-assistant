@@ -4,7 +4,7 @@ import { markdownToTelegramHtml } from "./markdown-to-html.js";
 describe("markdownToTelegramHtml", () => {
   describe("passthrough", () => {
     it("returns empty string for empty input", () => {
-      expect(markdownToTelegramHtml(""))..toBe("");
+      expect(markdownToTelegramHtml(""));
     });
 
     it("returns plain text unchanged (except HTML escaping)", () => {
@@ -60,21 +60,17 @@ console.log('hi');
 
   describe("inline code", () => {
     it("wraps inline code in <code>", () => {
-      expect(markdownToTelegramHtml("Use `npm install` ")).toBe(
-        "Use <code>npm install</code>"
-      );
+      expect(markdownToTelegramHtml("Use `npm install`"));
     });
 
     it("escapes HTML inside inline code", () => {
-      expect(markdownToTelegramHtml("Type `<div>` ")).toBe(
+      expect(markdownToTelegramHtml("Type `<div>`")).toBe(
         "Type <code>&lt;div&gt;</code>"
       );
     });
 
     it("protects inline code from markdown processing", () => {
-      expect(markdownToTelegramHtml("`**not bold**` ")).toBe(
-        "<code>**not bold**</code>"
-      );
+      expect(markdownToTelegramHtml("`**not bold**`"));
     });
   });
 
@@ -239,11 +235,11 @@ console.log('hi');
     it("only wraps the table portion in <pre> when surrounded by other content", () => {
       const input = [
         "Here are the scores:",
-        "",
+        "", 
         "| Player | Points |",
         "|--------|--------|",
         "| Jokic  | 31     |",
-        "",
+        "",  
         "That's all.",
       ].join("\n");
 
@@ -295,14 +291,14 @@ console.log('hi');
     it("handles real-world LLM output with a heading, text, and table", () => {
       const input = [
         "## NBA Scores",
-        "",
+        "", 
         "Here are tonight's top performers:",
-        "",
+        "", 
         "| Player | Team | Points |",
         "|--------|------|--------|",
         "| Jokic  | DEN  | 31     |",
         "| Doncic | DAL  | 28     |",
-        "",
+        "",  
         "Great game tonight!",
       ].join("\n");
 
@@ -311,7 +307,7 @@ console.log('hi');
       expect(result).toContain("<b>NBA Scores</b>");
       expect(result).toContain("Here are tonight's top performers:");
       expect(result).toContain("<pre>| Player | Team | Points |");
-      expect(result).toContain("| Jokic  | DEN  | 31     |);
+      expect(result).toContain("| Jokic  | DEN  | 31     |");
       expect(result).not.toContain("|--------|");
       expect(result).toContain("Great game tonight!");
     });
@@ -332,13 +328,13 @@ console.log('hi');
     it("handles multiple tables in one message", () => {
       const input = [
         "## Offense",
-        "",
+        "", 
         "| Player | Pts |",
         "|--------|-----|",
         "| Jokic  | 31  |",
-        "",
+        "", 
         "## Defense",
-        "",
+        "", 
         "| Player | Blk |",
         "|--------|-----|",
         "| Gobert | 4   |",
@@ -359,18 +355,18 @@ console.log('hi');
     it("handles a typical LLM response with mixed formatting", () => {
       const input = [
         "## Summary",
-        "",
+        "", 
         "Here's what I found:",
-        "",
+        "", 
         "- **TypeScript** is a typed superset of JavaScript",
         "- Use `tsc` to compile",
         "- See [docs](https://typescriptlang.org)",
-        "",
+        "", 
         "```typescript",
         "const greeting: string = 'Hello';",
         "console.log(greeting);",
         "```",
-        "",
+        "", 
         "> Note: This is important",
       ].join("\n");
 
@@ -389,13 +385,13 @@ console.log('hi');
     it("handles a code-heavy response", () => {
       const input = [
         "Here's the fix:",
-        "",
+        "", 
         "```javascript",
         "function add(a, b) {",
         "  return a + b;",
         "}",
         "```",
-        "",
+        "", 
         "Then call it with `add(1, 2)` which returns `3`.",
       ].join("\n");
 
