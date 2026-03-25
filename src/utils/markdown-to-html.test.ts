@@ -199,6 +199,119 @@ describe("markdownToTelegramHtml", () => {
     });
   });
 
+  describe("tables", () => {
+    it("wraps a basic markdown table in <pre> and strips the separator row", () => {
+      const input = [
+        "| Player | Team | Points |",
+        "|--------|------|--------|",
+        "| Jokic  | DEN  | 31     |",
+        "| Doncic | DAL  | 28     |",
+      ].join("\n");
+
+      const result = markdownToTelegramHtml(input);
+
+      expect(result).toBe(
+        "<pre>| Player | Team | Points |\n| Jokic  | DEN  | 31     |\n| Doncic | DAL  | 28     |</pre>"
+      );
+      expect(result).not.toContain("|--------|");
+    });
+
+    it("does not process markdown formatting inside table cells", () => {
+      const input = [
+        "| Name | Status |",
+        "|------|--------|",
+        "| **Jokic** | *active* |",
+      ].join("\n");
+
+      const result = markdownToTelegramHtml(input);
+
+      expect(result).toContain("**Jokic**");
+      expect(result).toContain("*active*");
+      expect(result).not.toContain("<b>");
+      expect(result).not.toContain("<i>");
+    });
+
+    it("only wraps the table portion in <pre> when surrounded by other content", () => {
+      const input = [
+        "Here are the scores:",
+        "",
+        "| Player | Points |",
+        "|--------|--------|",
+        "| Jokic  | 31     |",
+        "",
+        "That's all.",
+      ].join("\n");
+
+      const result = markdownToTelegramHtml(input);
+
+      expect(result).toContain("Here are the scores:");
+      expect(result).toContain("<pre>| Player | Points |");
+      expect(result).toContain("That's all.");
+    });
+
+    it("HTML-escapes special characters inside table cells", () => {
+      const input = [
+        "| Name | Value |",
+        "|------|-------|",
+        "| a&b  | <tag> |",
+        "| c>d  | e<f   |",
+      ].join("\n");
+
+      const result = markdownToTelegramHtml(input);
+
+      expect(result).toContain("a&amp;b");
+      expect(result).toContain("&lt;tag&gt;");
+      expect(result).toContain("c&gt;d");
+      expect(result).toContain("e&lt;f");
+    });
+
+    it("handles a multi-row table with many data rows", () => {
+      const input = [
+        "| Rank | Player  | Pts |",
+        "|------|---------|-----|",
+        "| 1    | Jokic   | 31  |",
+        "| 2    | Doncic  | 28  |",
+        "| 3    | Embiid  | 27  |",
+        "| 4    | Tatum   | 26  |",
+        "| 5    | Edwards | 25  |",
+      ].join("\n");
+
+      const result = markdownToTelegramHtml(input);
+
+      expect(result).toContain("| Jokic");
+      expect(result).toContain("| Doncic");
+      expect(result).toContain("| Embiid");
+      expect(result).toContain("| Tatum");
+      expect(result).toContain("| Edwards");
+      expect(result).not.toContain("|------|");
+      expect(result.startsWith("<pre>")).toBe(true);
+    });
+
+    it("handles real-world LLM output with a heading, text, and table", () => {
+      const input = [
+        "## NBA Scores",
+        "",
+        "Here are tonight's top performers:",
+        "",
+        "| Player | Team | Points |",
+        "|--------|------|--------|",
+        "| Jokic  | DEN  | 31     |",
+        "| Doncic | DAL  | 28     |",
+        "",
+        "Great game tonight!",
+      ].join("\n");
+
+      const result = markdownToTelegramHtml(input);
+
+      expect(result).toContain("<b>NBA Scores</b>");
+      expect(result).toContain("Here are tonight's top performers:");
+      expect(result).toContain("<pre>| Player | Team | Points |");
+      expect(result).toContain("| Jokic  | DEN  | 31     |");
+      expect(result).not.toContain("|--------|");
+      expect(result).toContain("Great game tonight!");
+    });
+  });
+
   describe("combined / real-world LLM output", () => {
     it("handles a typical LLM response with mixed formatting", () => {
       const input = [
