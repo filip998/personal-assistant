@@ -27,6 +27,19 @@ export function markdownToTelegramHtml(markdown: string): string {
     return `\x00CODEBLOCK_${idx}\x00`;
   });
 
+  // 1.5. Extract markdown tables to protect them and render as <pre> (monospace alignment)
+  const tables: string[] = [];
+  text = text.replace(
+    /^(\|.+\|)\n(\|[-:\s|]+\|)\n((?:\|.+\|\n?)+)/gm,
+    (_match, header, _separator, body) => {
+      const idx = tables.length;
+      const headerLine = escapeHtml(header);
+      const bodyLines = body.trimEnd().split("\n").map(escapeHtml).join("\n");
+      tables.push(`<pre>${headerLine}\n${bodyLines}</pre>`);
+      return `\x00TABLE_${idx}\x00`;
+    }
+  );
+
   // 2. Extract inline code to protect from further processing
   const inlineCodes: string[] = [];
   text = text.replace(/`([^`\n]+)`/g, (_match, code) => {
@@ -82,7 +95,8 @@ export function markdownToTelegramHtml(markdown: string): string {
   // 13. Horizontal rules: --- or *** → simple line
   text = text.replace(/^(---|\*\*\*|___)$/gm, "───────────────");
 
-  // 14. Restore code blocks and inline codes
+  // 14. Restore tables, code blocks, and inline codes
+  text = text.replace(/\x00TABLE_(\d+)\x00/g, (_match, idx) => tables[Number(idx)]!);
   text = text.replace(/\x00CODEBLOCK_(\d+)\x00/g, (_match, idx) => codeBlocks[Number(idx)]!);
   text = text.replace(/\x00INLINE_(\d+)\x00/g, (_match, idx) => inlineCodes[Number(idx)]!);
 
